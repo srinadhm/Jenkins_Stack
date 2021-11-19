@@ -165,5 +165,109 @@ how many number of concurrent jobs we wanted to run
 if we want to run 5 parallel jobs then executors count should be 5
 
 
+Declarative ---- pipeline
+Scripted ---- node
+
+Sample Declarative jenkins job to run on slave/agent
+
+pipeline{
+    agent { label 'jenkins-slave' }
+    stages{
+        stage('git version'){
+            steps{
+                sh 'git --version'
+            }
+        }
+        stage('java version'){
+            steps{
+                sh 'java -version'
+            }
+        }
+        stage('git checkout'){
+            steps{
+                git 'https://github.com/cloudtechmasters/springboohello-CICD.git'
+            }
+        }
+    }
+}
+
+Slave will use the master jenkins machine , but we want to create any like clone the repo and build the project we need to setup/install software in slave ec2 instances
+ex: yum install git -y
+If the job is success all the data are stored/saved in below workspace location
+
+
+[root@jenkins-slave ~]# cd /home/jenkins/workspace/Jenkins-Slave
+[root@jenkins-slave Jenkins-Slave]# ll
+total 92
+-rw-rw-r-- 1 jenkins jenkins  548 Nov 19 13:13 azure-pipelines.yml
+-rw-rw-r-- 1 jenkins jenkins  335 Nov 19 13:13 docker-deploy.yml
+-rw-rw-r-- 1 jenkins jenkins  124 Nov 19 13:13 Dockerfile
+-rw-rw-r-- 1 jenkins jenkins  580 Nov 19 13:13 docker-run-deploy.yml
+-rw-rw-r-- 1 jenkins jenkins  449 Nov 19 13:13 downloadartifact.yml
+-rw-rw-r-- 1 jenkins jenkins   75 Nov 19 13:13 dummy.txt
+-rw-rw-r-- 1 jenkins jenkins   29 Nov 19 13:13 hosts
+-rw-rw-r-- 1 jenkins jenkins  505 Nov 19 13:13 Jenkinsfile-deployment
+-rw-rw-r-- 1 jenkins jenkins  944 Nov 19 13:13 Jenkinsfile-DockerCD
+-rw-rw-r-- 1 jenkins jenkins 1383 Nov 19 13:13 Jenkinsfile-DockerCI
+-rw-rw-r-- 1 jenkins jenkins 1579 Nov 19 13:13 Jenkinsfile-Jfrog
+-rw-rw-r-- 1 jenkins jenkins  325 Nov 19 13:13 Jenkinsfile-NexusCD
+-rw-rw-r-- 1 jenkins jenkins 2479 Nov 19 13:13 Jenkinsfile-NexusCI
+-rw-rw-r-- 1 jenkins jenkins  804 Nov 19 13:13 Jenkinsfile-SES
+-rw-rw-r-- 1 jenkins jenkins  814 Nov 19 13:13 Jenkinsfile-SSM
+-rw-rw-r-- 1 jenkins jenkins 1111 Nov 19 13:13 pom.xml
+-rw-rw-r-- 1 jenkins jenkins 1114 Nov 19 13:13 README-Activeparameters.md
+-rw-rw-r-- 1 jenkins jenkins  780 Nov 19 13:13 README-DockerCD.md
+-rw-rw-r-- 1 jenkins jenkins 1865 Nov 19 13:13 README.md
+-rw-rw-r-- 1 jenkins jenkins  427 Nov 19 13:13 README-NexusCD.md
+-rw-rw-r-- 1 jenkins jenkins  497 Nov 19 13:13 README-NexusCI.md
+-rw-rw-r-- 1 jenkins jenkins 1554 Nov 19 13:13 README-SES.md
+-rw-rw-r-- 1 jenkins jenkins 1695 Nov 19 13:13 README-SSM.md
+drwxrwxr-x 3 jenkins jenkins   18 Nov 19 13:13 src
+[root@jenkins-slave Jenkins-Slave]#
+
+ Sample Scripted jenkins job to run on slave/agent
+ -----------------------------------------------
+ node('jenkins-slave'){
+    stage('git version'){
+            sh 'git --version'
+        }
+        stage('java version'){
+            sh 'java -version'
+        }
+        stage('git checkout'){
+            git 'https://github.com/cloudtechmasters/springboohello-CICD.git'
+        }
+}
+
+[root@jenkins-slave Jenkins-Slave]# cd
+[root@jenkins-slave ~]# cd /home/jenkins/workspace/Jenkins-Scripted-slave
+[root@jenkins-slave Jenkins-Scripted-slave]# ll
+total 92
+-rw-rw-r-- 1 jenkins jenkins  548 Nov 19 13:23 azure-pipelines.yml
+-rw-rw-r-- 1 jenkins jenkins  335 Nov 19 13:23 docker-deploy.yml
+-rw-rw-r-- 1 jenkins jenkins  124 Nov 19 13:23 Dockerfile
+-rw-rw-r-- 1 jenkins jenkins  580 Nov 19 13:23 docker-run-deploy.yml
+-rw-rw-r-- 1 jenkins jenkins  449 Nov 19 13:23 downloadartifact.yml
+-rw-rw-r-- 1 jenkins jenkins   75 Nov 19 13:23 dummy.txt
+-rw-rw-r-- 1 jenkins jenkins   29 Nov 19 13:23 hosts
+-rw-rw-r-- 1 jenkins jenkins  505 Nov 19 13:23 Jenkinsfile-deployment
+-rw-rw-r-- 1 jenkins jenkins  944 Nov 19 13:23 Jenkinsfile-DockerCD
+-rw-rw-r-- 1 jenkins jenkins 1383 Nov 19 13:23 Jenkinsfile-DockerCI
+-rw-rw-r-- 1 jenkins jenkins 1579 Nov 19 13:23 Jenkinsfile-Jfrog
+-rw-rw-r-- 1 jenkins jenkins  325 Nov 19 13:23 Jenkinsfile-NexusCD
+-rw-rw-r-- 1 jenkins jenkins 2479 Nov 19 13:23 Jenkinsfile-NexusCI
+-rw-rw-r-- 1 jenkins jenkins  804 Nov 19 13:23 Jenkinsfile-SES
+-rw-rw-r-- 1 jenkins jenkins  814 Nov 19 13:23 Jenkinsfile-SSM
+-rw-rw-r-- 1 jenkins jenkins 1111 Nov 19 13:23 pom.xml
+-rw-rw-r-- 1 jenkins jenkins 1114 Nov 19 13:23 README-Activeparameters.md
+-rw-rw-r-- 1 jenkins jenkins  780 Nov 19 13:23 README-DockerCD.md
+-rw-rw-r-- 1 jenkins jenkins 1865 Nov 19 13:23 README.md
+-rw-rw-r-- 1 jenkins jenkins  427 Nov 19 13:23 README-NexusCD.md
+-rw-rw-r-- 1 jenkins jenkins  497 Nov 19 13:23 README-NexusCI.md
+-rw-rw-r-- 1 jenkins jenkins 1554 Nov 19 13:23 README-SES.md
+-rw-rw-r-- 1 jenkins jenkins 1695 Nov 19 13:23 README-SSM.md
+drwxrwxr-x 3 jenkins jenkins   18 Nov 19 13:23 src
+[root@jenkins-slave Jenkins-Scripted-slave]#
+
 
 
