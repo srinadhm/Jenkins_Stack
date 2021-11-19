@@ -1,0 +1,169 @@
+Jenkins Master Slave Architecture 
+
+https://www.softwaretestinghelp.com/devops-tutorials/
+https://www.soais.com/configure-jenkins-master-and-slave-nodes/
+
+Jenkins Master and Slave Concept
+A Jenkins master comes with the basic installation of Jenkins, and in this configuration, the master handles all the tasks for your build system.
+If you are working on multiple projects, you may run multiple jobs on each project. Some projects need to run on some nodes, and in this process, 
+we need to configure slaves. Jenkins slaves connect to the Jenkins master using the Java Network Launch Protocol.
+
+
+The Jenkins master acts to schedule the jobs, assign slaves, and send builds to slaves to execute the jobs.
+It will also monitor the slave state (offline or online) and get back the build result responses from slaves and the display build results on the console output. 
+The workload of building jobs is delegated to multiple slaves.
+
+Slave types
+1.static slave : we need to mention in which slave node has to run the job. it runs all the time
+2.Dynamic slave
+ex: docker container : when someone triggers build it will create a container, it does the job and container will be terminated
+ex: k8s pods when we trigger build pod will be created dynamically,pod does the ci part once ci is done pod will be terminated automatically.
+
+https://medium.com/swlh/ci-cd-pipeline-using-jenkins-dynamic-nodes-86ea854ff7a7
+https://www.devopsart.com/2020/08/step-by-steps-for-jenkins-dynamically.html
+
+
+Prerequisite
+----------
+Required minimum 2 ec2 instanes to setup master and slave
+Master --- 1 ec2 (linux)
+Slave ---- 1 ec2 (linux)
+
+https://www.howtoforge.com/tutorial/ubuntu-jenkins-master-slave/
+
+1.Change the hostname to differentiate between master slave ec2 instances
+hostnamectl set-hostname jenkins-master
+hostnamectl set-hostname jenkins-slave
+
+2.Install java and Jenkins on Master
+yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel -y
+
+sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins.io/redhat/jenkins.repo
+sudo rpm --import http://pkg.jenkins.io/redhat/jenkins.io.key
+Install epel repo/distribution for daemonize package 
+sudo amazon-linux-extras install epel -y 
+Enable epel 
+sudo yum-config-manager --enable epel
+Install jenkins 
+sudo yum install jenkins -y && service jenkins start
+
+3.Allow 8080 port number in security group and access the jenkins from web with server ip and port 
+http://18.212.206.153:8080/
+
+4.To generate slave nodes we have different approaches , we are going with ssh by switching to jenkins user
+su - jenkins -s /bin/bash
+ssh-keygen
+And you will get the 'id_rsa' private and 'id_rsa.pub' public key in the '/var/lib/jenkins/.ssh' directory.
+-bash-4.2$ cd /var/lib/jenkins/
+-bash-4.2$ cd .ssh
+-bash-4.2$ ll
+total 8
+-rw------- 1 jenkins jenkins 1679 Nov 19 10:34 id_rsa
+-rw-r--r-- 1 jenkins jenkins  404 Nov 19 10:34 id_rsa.pub
+
+5.Go to jenkins dashboard and copy id_rsa private key in credentials
+
+Manage Jenkins --- > Manage Credentials ---> Stores scoped to Jenkins ---> Jenkins ---> System ---> 
+Global credentials ---> Add Credentials ----> Kind: SSH Username with private key , Scope: Global, Username: jenkins,Private key: Enter directly and paste the 'id_rsa' private key of Jenkins user from the master server.
+Click 'OK'
+
+6.Set up Slave Nodes 
+Now we will setup slave nodes server by installing java on those server, and create a new Jenkins user.
+
+yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel -y
+
+[root@jenkins-slave ~]# useradd jenkins
+[root@jenkins-slave ~]# passwd jenkins
+Changing password for user jenkins.
+New password:
+BAD PASSWORD: The password is shorter than 8 characters
+Retype new password:
+passwd: all authentication tokens updated successfully.
+
+7.Next, we need to upload the key 'id_rsa.pub' from the master to slave server nodes. We need to upload to each server nodes using 'ssh-copy-id' command as below.
+
+We when public key it will ask for the password first time enable password authentication in slave 
+
+[root@jenkins-slave ~]# vi /etc/ssh/sshd_config
+PasswordAuthentication yes
+
+save changes and exit
+#Restart ssh service
+[root@jenkins-slave ~]# service sshd restart
+Redirecting to /bin/systemctl restart sshd.service
+
+
+[root@jenkins-master ~]# su - jenkins -s /bin/bash
+-bash-4.2$ ssh-copy-id jenkins@172.31.21.165
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/var/lib/jenkins/.ssh/id_rsa.pub"
+The authenticity of host '172.31.21.165 (172.31.21.165)' can't be established.
+ECDSA key fingerprint is SHA256:ex1drieGvnCD/HeCq5AQ3OqYAkGFFTNjNnxOReTDdLk.
+ECDSA key fingerprint is MD5:36:d9:26:d5:ca:62:82:35:00:69:38:c8:0f:a3:8c:88.
+Are you sure you want to continue connecting (yes/no)? yes
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+jenkins@172.31.21.165's password:
+
+Number of key(s) added: 1
+
+Now try logging into the machine, with:   "ssh 'jenkins@172.31.21.165'"
+and check to make sure that only the key(s) you wanted were added.
+
+Keys are added in slave machine in below location
+/home/jenkins/.ssh/authorized_keys
+
+[root@jenkins-slave ~]# cat /home/jenkins/.ssh/authorized_keys
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDIGGvWdeNoo1MxM1Angu94Xl/TqFaqdxmTtLVdf/N+zW8T3EoAbmCpK4yGLvue9J3whXSOI7VxtszS9ZCBmJdU3yaKnCU1swyzxgKV8f9Q8CyfXLNoyEkPdZBnZ6UmZ+lUdTPTkPy7zIvDcXPiz8y7Xy912lntbwDRhiaUtv3x79hQSTs+XF2ZPNxskTcsl2LRA6/YCcjfmsIKpMJ6nByFZiHl49n/eE4+4Bb1d7aRxf1n9xlLH7YmoECt35L7gnMsu4EYlpxqQAzYW0athqhFVoGJNQm/OQspcxYXekHBzmyK/s88n/j3XO+cnLT0l3YO1JxCGGMIjBQOdozxejPh jenkins@jenkins-master
+
+Another approach will be copy master public key in slave authorized_keys
+
+cat /var/lib/jenkins/.ssh/id_rsa-pub master 
+-------------------------------------------
+
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDIGGvWdeNoo1MxM1Angu94Xl/TqFaqdxmTtLVdf/N+zW8T3EoAbmCpK4yGLvue9J3whXSOI7VxtszS9ZCBmJdU3yaKnCU1swyzxgKV8f9Q8CyfXLNoyEkPdZBnZ6UmZ+lUdTPTkPy7zIvDcXPiz8y7Xy912lntbwDRhiaUtv3x79hQSTs+XF2ZPNxskTcsl2LRA6/YCcjfmsIKpMJ6nByFZiHl49n/eE4+4Bb1d7aRxf1n9xlLH7YmoECt35L7gnMsu4EYlpxqQAzYW0athqhFVoGJNQm/OQspcxYXekHBzmyK/s88n/j3XO+cnLT0l3YO1JxCGGMIjBQOdozxejPh jenkins@jenkins-master
+
+
+vi  /home/jenkins/.ssh/authorized_keys slave 
+--------------------------------------------
+
+Now check the ssh connection established between master and slave after copying public key
+
+[root@jenkins-master ~]# su - jenkins -s /bin/bash
+Last login: Fri Nov 19 10:55:45 UTC 2021 on pts/0
+-bash-4.2$ ssh jenkins@172.31.21.165
+Last login: Fri Nov 19 11:25:56 2021 from ip-172-31-19-53.ec2.internal
+
+       __|  __|_  )
+       _|  (     /   Amazon Linux 2 AMI
+      ___|\___|___|
+
+https://aws.amazon.com/amazon-linux-2/
+
+8.Add New Slave Nodes
+
+Manage Jenkins ----> Manage nodes and clouds ---> New node ---> 
+
+Type the node name 'slave01', choose the 'permanent agent', and click 'OK'.
+
+Parameter name                 Value
+Name                           slave-01
+Description                    slave-01
+Labels                         slave-01
+Remote root directory          /home/jenkins
+Number of executors             3 (we can run 3 parallel jobs in slave) default executor count will be 2
+Launch method                   Launch agents via SSH
+Usage                           Use this node as much as possible
+Host Key Verification Strategy  Known hosts file Verification Strategy
+Availability                    Keep this agent online as much as possible
+
+Save
+
+
+Executors
+how many number of concurrent jobs we wanted to run
+
+if we want to run 5 parallel jobs then executors count should be 5
+
+
+
+
